@@ -9,9 +9,10 @@
 #import "MMLogan.h"
 #import "logan.h"
 #import "AndyGCDQueue.h"
+#import <sys/xattr.h>
 
-uint32_t __max_upload_reversed_date; // 日志上传文件最大过期时间
-NSString *__logan_upload_dir; // 日志上传文件夹
+static uint32_t __max_upload_reversed_date; // 日志上传文件最大过期时间
+static NSString *__logan_upload_dir; // 日志上传文件夹
 
 @interface Logan : NSObject
 
@@ -24,6 +25,7 @@ NSString *__logan_upload_dir; // 日志上传文件夹
 + (instancetype)logan;
 + (NSString *)loganLogDirectory;
 + (NSInteger)getDaysFrom:(NSDate *)serverDate To:(NSDate *)endDate;
+- (void)flushInQueue;
 
 @end
 
@@ -43,6 +45,8 @@ NSString *__logan_upload_dir; // 日志上传文件夹
     loganInit(key, iv, file_max);
     // 将日志输出至控制台
     loganUseASL(YES);
+    
+    [self disableAppMobileBackupWithDir:[Logan loganLogDirectory]];
     
     __logan_upload_dir = @"logan_upload"; // logan上传日志文件夹
     __max_upload_reversed_date = 7; // 日志上传文件最大过期时间 七天
@@ -84,13 +88,13 @@ NSString *__logan_upload_dir; // 日志上传文件夹
 + (void)uploadLoganFile
 {
     // 1. 将当前的 mmap 的数据刷入文件
-    loganFlush();
+    [[Logan logan] flushInQueue];
     //2. 在 loganQueue 队列通过 apply 将 LoganLoggerv3 根目录下的所有日志文件 移动到 logan_upload 目录
     NSString *fromDir = [Logan loganLogDirectory];
     NSString *toDir = [self loganUploadDirectory];
     NSFileManager *fileManager = [NSFileManager defaultManager];
     [fileManager createDirectoryAtPath:toDir withIntermediateDirectories:YES attributes:nil error:nil];
-    NSArray *fromFileNamesArr = [[[[NSFileManager defaultManager] contentsOfDirectoryAtPath:[Logan loganLogDirectory] error:nil] filteredArrayUsingPredicate:[NSPredicate predicateWithFormat:@"SELF CONTAINS[cd] '-'"]] sortedArrayUsingSelector:@selector(compare:)]; //[c]不区分大小写 , [d]不区分发音符号即没有重音符号 , [cd]既不区分大小写，也不区分发音符号
+    NSArray *fromFileNamesArr = [[[NSFileManager defaultManager] contentsOfDirectoryAtPath:[Logan loganLogDirectory] error:nil] filteredArrayUsingPredicate:[NSPredicate predicateWithFormat:@"SELF CONTAINS[cd] '-'"]]; //[c]不区分大小写 , [d]不区分发音符号即没有重音符号 , [cd]既不区分大小写，也不区分发音符号
     dispatch_apply(fromFileNamesArr.count, [Logan logan].loganQueue, ^(size_t index) {
         NSString *fileName = fromFileNamesArr[index];
         NSString *fromFullpath = [fromDir stringByAppendingPathComponent:fileName];
@@ -101,7 +105,7 @@ NSString *__logan_upload_dir; // 日志上传文件夹
     });
     
     // 3. 遍历数据上传文件
-    NSArray *uploadFileNamesArr = [fileManager contentsOfDirectoryAtPath:toDir error:nil];
+    NSArray *uploadFileNamesArr = [[fileManager contentsOfDirectoryAtPath:toDir error:nil] filteredArrayUsingPredicate:[NSPredicate predicateWithFormat:@"SELF CONTAINS[cd] '_'"]];
     // 根据待上传文件个数开启线程，最多5个线程同时上传
     NSUInteger maxThreadCount = uploadFileNamesArr.count <= 5 ? uploadFileNamesArr.count : 5;
     AndyGCDQueue *contextQueue = [[AndyGCDQueue alloc] initWithQOS:NSQualityOfServiceUtility queueCount:maxThreadCount];
@@ -128,7 +132,7 @@ NSString *__logan_upload_dir; // 日志上传文件夹
 + (void)deleteOutdatedUploadFiles
 {
     NSFileManager *fileManager = [NSFileManager defaultManager];
-    NSArray *uploadFileNamesArr = [fileManager contentsOfDirectoryAtPath:[self loganUploadDirectory] error:nil];
+    NSArray *uploadFileNamesArr = [[fileManager contentsOfDirectoryAtPath:[self loganUploadDirectory] error:nil] filteredArrayUsingPredicate:[NSPredicate predicateWithFormat:@"SELF CONTAINS[cd] '_'"]];
     __block NSDateFormatter *formatter = [[NSDateFormatter alloc] init];
     NSString *dateFormatString = @"yyyy-MM-dd";
     [formatter setDateFormat:dateFormatString];
@@ -162,6 +166,8 @@ NSString *__logan_upload_dir; // 日志上传文件夹
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
         dir = [[Logan loganLogDirectory] stringByAppendingPathComponent:__logan_upload_dir];
+        
+        [self disableAppMobileBackupWithDir:dir];
     });
     return dir;
 }
@@ -172,6 +178,14 @@ NSString *__logan_upload_dir; // 日志上传文件夹
         NSFileManager *fileManager = [NSFileManager defaultManager];
         [fileManager removeItemAtPath:[[self loganUploadDirectory] stringByAppendingPathComponent:name] error:nil];
     });
+}
+
+// 禁止 iOS 系统备份目录
++ (void)disableAppMobileBackupWithDir:(NSString *)dir
+{
+    const char* attrName = "com.apple.MobileBackup";
+    u_int8_t attrValue = 1;
+    setxattr([dir UTF8String], attrName, &attrValue, sizeof(attrValue), 0, 0);
 }
 
 

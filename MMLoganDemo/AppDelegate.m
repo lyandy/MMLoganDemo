@@ -19,7 +19,7 @@
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
     // Override point for customization after application launch.
     
-    [MMLogan initLog];
+    [MMLogan initLog]; // 初始化 Logan
     
     return YES;
 }
