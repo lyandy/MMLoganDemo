@@ -7,7 +7,7 @@
 //
 
 #import "AppDelegate.h"
-#import "logan.h"
+#import "MMlogan.h"
 
 @interface AppDelegate ()
 
@@ -19,13 +19,7 @@
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
     // Override point for customization after application launch.
     
-    NSData *keydata = [@"0123456789012345" dataUsingEncoding:NSUTF8StringEncoding];
-    NSData *ivdata = [@"0123456789012345" dataUsingEncoding:NSUTF8StringEncoding];
-    uint64_t file_max = 10 * 1024 * 1024;
-    // logan初始化，传入16位key，16位iv，写入文件最大大小(byte)
-    loganInit(keydata, ivdata, file_max);
-    // 将日志输出至控制台
-    loganUseASL(YES);
+    [MMLogan initLog];
     
     return YES;
 }

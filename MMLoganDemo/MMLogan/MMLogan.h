@@ -25,6 +25,6 @@ typedef enum : NSUInteger {
 
 + (NSString *)allFilesInfo;
 
-+ (void)uploadFileCompletion:(void(^)(NSError *error, BOOL result))completion;
++ (void)uploadLoganFile;
 
 @end
