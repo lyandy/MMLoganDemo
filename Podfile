@@ -5,4 +5,5 @@ inhibit_all_warnings!
 
 target "MMLoganDemo" do
     pod 'Logan', '~> 1.2.5'
+    pod 'AndyGCD', '~> 1.0.6'
 end

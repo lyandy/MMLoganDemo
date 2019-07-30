@@ -8,9 +8,10 @@
 
 #import "MMLogan.h"
 #import "logan.h"
+#import "AndyGCDQueue.h"
 
 uint32_t __max_upload_reversed_date; // 日志上传文件最大过期时间
-NSString *__logan_upload_dir;
+NSString *__logan_upload_dir; // 日志上传文件夹
 
 @interface Logan : NSObject
 
@@ -101,22 +102,26 @@ NSString *__logan_upload_dir;
     
     // 3. 遍历数据上传文件
     NSArray *uploadFileNamesArr = [fileManager contentsOfDirectoryAtPath:toDir error:nil];
+    // 根据待上传文件个数开启线程，最多5个线程同时上传
+    NSUInteger maxThreadCount = uploadFileNamesArr.count <= 5 ? uploadFileNamesArr.count : 5;
+    AndyGCDQueue *contextQueue = [[AndyGCDQueue alloc] initWithQOS:NSQualityOfServiceUtility queueCount:maxThreadCount];
     [uploadFileNamesArr enumerateObjectsUsingBlock:^(id  _Nonnull fileName, NSUInteger idx, BOOL * _Nonnull stop) {
         NSString *filePath = [toDir stringByAppendingPathComponent:fileName];
         NSString *urlStr = [NSString stringWithFormat:@"http://127.0.0.1:3000/logupload?name=%@", [filePath lastPathComponent]];
-        NSURL *url = [NSURL URLWithString:urlStr];
-        NSMutableURLRequest *req = [[NSMutableURLRequest alloc] initWithURL:url cachePolicy:NSURLRequestReloadIgnoringCacheData timeoutInterval:60];
+        NSMutableURLRequest *req = [[NSMutableURLRequest alloc] initWithURL:[NSURL URLWithString:urlStr] cachePolicy:NSURLRequestReloadIgnoringCacheData timeoutInterval:60];
         [req setHTTPMethod:@"POST"];
         [req addValue:@"binary/octet-stream" forHTTPHeaderField:@"Content-Type"];
         NSURL *fileUrl = [NSURL fileURLWithPath:filePath];
-        NSURLSessionUploadTask *task = [[NSURLSession sharedSession] uploadTaskWithRequest:req fromFile:fileUrl completionHandler:^(NSData *_Nullable data, NSURLResponse *_Nullable response, NSError *_Nullable error) {
-            if (error == nil)
-            {
-                // 4. 上传成功后删除本地 logan_upload 目录下文件
-                [self deleteLoganUploadFile:fileName];
-            }
+        [contextQueue execute:^{
+            NSURLSessionUploadTask *task = [[NSURLSession sharedSession] uploadTaskWithRequest:req fromFile:fileUrl completionHandler:^(NSData *_Nullable data, NSURLResponse *_Nullable response, NSError *_Nullable error) {
+                if (error == nil)
+                {
+                    // 4. 上传成功后删除本地 logan_upload 目录下文件
+                    [self deleteLoganUploadFile:fileName];
+                }
+            }];
+            [task resume];
         }];
-        [task resume];
     }];
 }
 
@@ -150,7 +155,7 @@ NSString *__logan_upload_dir;
     }];
 }
 
-
+// 日志上传目录
 + (NSString *)loganUploadDirectory
 {
     static NSString *dir = nil;
