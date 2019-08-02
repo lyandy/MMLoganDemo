@@ -1,22 +1,18 @@
 PODS:
-  - AndyGCD (1.0.6)
   - Logan (1.2.5):
     - Logan/mbedtls (= 1.2.5)
   - Logan/mbedtls (1.2.5)
 
 DEPENDENCIES:
-  - AndyGCD (~> 1.0.6)
   - Logan (~> 1.2.5)
 
 SPEC REPOS:
   https://github.com/cocoapods/specs.git:
-    - AndyGCD
     - Logan
 
 SPEC CHECKSUMS:
-  AndyGCD: 30d963ecaa95006e4c015ac3d5f5dfe6c8826873
   Logan: 37b1d495d6b34e7a5d38b53ae8c385e4ae26c707
 
-PODFILE CHECKSUM: 5795988eee528db0ae3636b7e96124a356563b3f
+PODFILE CHECKSUM: b030a0b385315ceaecd967aab5b9b88f90888281
 
 COCOAPODS: 1.7.2

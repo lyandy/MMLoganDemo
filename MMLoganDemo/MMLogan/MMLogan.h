@@ -31,7 +31,10 @@ typedef enum : NSUInteger {
 // 获取日志文件信息：日期和大小
 + (NSString *)allFilesInfo;
 
-// 上传日志文件
+// 上传日志文件 默认当前日期，例如：2019-08-02
 + (void)uploadLoganFile;
+
+// 上传日志文件，可自行传入日期, 格式：yy-MM-dd，例如：2019-08-02
++ (void)uploadLoganFileWithDate:(NSString *)date;
 
 @end
