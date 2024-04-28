@@ -4,5 +4,5 @@ platform :ios, "9.0"
 inhibit_all_warnings!
 
 target "MMLoganDemo" do
-    pod 'Logan', '~> 1.2.5'
+    pod 'Logan', '~> 1.2.10'
 end
